@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Statistics.java — Interactive Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@300;400;500;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:      #0b0c0f;
+  --surface: #13151a;
+  --border:  #1e2128;
+  --accent:  #e8a020;
+  --accent2: #c45c1a;
+  --text:    #d4d8e2;
+  --muted:   #6b7280;
+  --code-bg: #0e1014;
+  --green:   #4ade80;
+  --blue:    #60a5fa;
+  --yellow:  #fbbf24;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Outfit', sans-serif;
+  font-weight: 300;
+  line-height: 1.7;
+  font-size: 15px;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  opacity: .5;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: .4;
+}
+
+/* ── NAV ── */
+nav {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 3rem; height: 58px;
+  background: rgba(11,12,15,.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+.nav-logo { font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px; letter-spacing:.04em; color:var(--accent); }
+.nav-links { display:flex; gap:2rem; list-style:none; }
+.nav-links a { font-size:12px; font-weight:500; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); text-decoration:none; transition:color .2s; }
+.nav-links a:hover { color:var(--text); }
+
+/* ── HERO ── */
+.hero { position:relative; z-index:1; padding:7rem 3rem 5rem; max-width:900px; margin:0 auto; }
+.hero-tag {
+  display:inline-block; font-family:'JetBrains Mono',monospace;
+  font-size:11px; letter-spacing:.15em; text-transform:uppercase;
+  color:var(--accent); border:1px solid rgba(232,160,32,.3);
+  padding:4px 12px; border-radius:2px; margin-bottom:1.8rem;
+  animation:fadeUp .6s ease both;
+}
+h1 { font-family:'DM Serif Display',serif; font-size:clamp(3rem,6vw,5rem); line-height:1.1; font-weight:400; color:#eef0f5; animation:fadeUp .6s .1s ease both; }
+h1 em { font-style:italic; color:var(--accent); }
+.hero-sub { margin-top:1.5rem; font-size:16px; color:var(--muted); max-width:520px; animation:fadeUp .6s .2s ease both; }
+.hero-badges { display:flex; gap:.75rem; flex-wrap:wrap; margin-top:2.5rem; animation:fadeUp .6s .3s ease both; }
+.badge { font-family:'JetBrains Mono',monospace; font-size:11px; padding:5px 14px; border-radius:2px; border:1px solid var(--border); color:var(--muted); background:var(--surface); }
+.badge.green  { border-color:rgba(74,222,128,.25);  color:var(--green);  }
+.badge.blue   { border-color:rgba(96,165,250,.25);  color:var(--blue);   }
+.badge.yellow { border-color:rgba(251,191,36,.25);  color:var(--yellow); }
+
+/* ── SECTION LABEL ── */
+.section-label {
+  font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.2em; text-transform:uppercase;
+  color:var(--accent); display:flex; align-items:center; gap:.75rem; margin-bottom:2.5rem;
+}
+.section-label::after { content:''; flex:1; height:1px; background:linear-gradient(90deg,var(--border),transparent); }
+
+/* ── CALC SECTION ── */
+.calc-section { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 3rem 6rem; }
+
+/* ── CATEGORY PILLS ── */
+.cat-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:1.5rem; }
+.cat-pill {
+  font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.06em;
+  padding:5px 16px; border-radius:2px; border:1px solid var(--border);
+  background:var(--surface); color:var(--muted); cursor:pointer; transition:all .18s;
+}
+.cat-pill:hover { border-color:rgba(232,160,32,.4); color:var(--text); }
+.cat-pill.active { border-color:var(--accent); color:var(--accent); background:rgba(232,160,32,.06); }
+
+/* ── FUNCTION GRID ── */
+.fn-grid {
+  display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr));
+  gap:1px; background:var(--border); border:1px solid var(--border); margin-bottom:2rem;
+}
+.fn-card { background:var(--surface); padding:1.4rem 1.6rem; cursor:pointer; position:relative; overflow:hidden; transition:background .18s; }
+.fn-card:hover, .fn-card.active { background:#161820; }
+.fn-card::before { content:''; position:absolute; top:0; left:0; width:2px; height:0; background:var(--accent); transition:height .3s ease; }
+.fn-card:hover::before, .fn-card.active::before { height:100%; }
+.fn-cat-tag { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent2); margin-bottom:6px; }
+.fn-name { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; color:#eef0f5; margin-bottom:4px; }
+.fn-short { font-size:12px; color:var(--muted); }
+
+/* ── CALC PANEL ── */
+.calc-panel { background:var(--surface); border:1px solid var(--border); padding:2rem 2.4rem; position:relative; }
+.calc-panel::before { content:''; position:absolute; top:0; left:0; width:100%; height:2px; background:linear-gradient(90deg,var(--accent),var(--accent2),transparent); }
+.panel-placeholder { text-align:center; padding:3.5rem; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--muted); }
+.panel-placeholder span { color:var(--accent); }
+.panel-title { font-family:'DM Serif Display',serif; font-size:1.8rem; font-weight:400; color:#eef0f5; margin-bottom:.3rem; }
+.panel-desc { font-size:14px; color:var(--muted); line-height:1.65; margin-bottom:1.25rem; padding-bottom:1.25rem; border-bottom:1px solid var(--border); }
+.panel-formula { font-family:'JetBrains Mono',monospace; font-size:12px; color:#c4c8d4; background:var(--code-bg); border:1px solid var(--border); border-left:2px solid var(--accent2); padding:.75rem 1rem; border-radius:0 2px 2px 0; margin-bottom:1.5rem; }
+
+/* ── INPUTS ── */
+.input-grid { display:grid; grid-template-columns:1fr 1fr; gap:1.25rem; }
+.input-grid.single { grid-template-columns:1fr; }
+.input-group { display:flex; flex-direction:column; }
+.input-label { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); margin-bottom:7px; }
+
+/* ── INPUT ROW (input + paste btn) ── */
+.inp-row { display:flex; gap:8px; align-items:stretch; }
+.inp-row .inp { flex:1; min-width:0; }
+
+.inp {
+  font-family:'JetBrains Mono',monospace; font-size:13px;
+  padding:10px 14px; background:var(--code-bg);
+  border:1px solid var(--border); border-radius:2px;
+  color:var(--text); outline:none; transition:border-color .2s; width:100%;
+}
+.inp:focus { border-color:var(--accent); }
+.inp::placeholder { color:#3a3f4a; }
+.inp-hint { font-size:11px; color:#3a3f4a; margin-top:5px; }
+
+/* ── INVALID STATE ── */
+.inp.invalid { border-color:#f87171; }
+
+/* ── PASTE BUTTON ── */
+.paste-btn {
+  font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.05em;
+  padding:0 14px; white-space:nowrap;
+  background:var(--code-bg); border:1px solid var(--border); border-radius:2px;
+  color:var(--muted); cursor:pointer; transition:all .18s;
+  display:flex; align-items:center; gap:6px;
+}
+.paste-btn:hover { border-color:var(--accent); color:var(--accent); }
+.paste-btn svg { width:13px; height:13px; flex-shrink:0; }
+
+/* ── PARSED COUNT BADGE ── */
+.parsed-count {
+  font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.08em;
+  margin-top:5px; transition:color .2s;
+}
+.parsed-count.ok   { color:var(--green); }
+.parsed-count.warn { color:#f87171; }
+.parsed-count.dim  { color:#3a3f4a; }
+
+/* ── RESULT ── */
+.result-area { margin-top:2rem; }
+.result-box { background:var(--code-bg); border:1px solid var(--border); border-left:2px solid var(--accent); padding:1.5rem 1.75rem; border-radius:0 2px 2px 0; }
+.result-lbl { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:.15em; text-transform:uppercase; color:var(--muted); margin-bottom:.5rem; }
+.result-val { font-family:'JetBrains Mono',monospace; font-size:2.4rem; font-weight:700; color:var(--accent); line-height:1; }
+.result-sub { font-size:13px; color:var(--muted); margin-top:.6rem; }
+.result-extras { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:var(--border); border:1px solid var(--border); margin-top:1.25rem; }
+.result-extra { background:var(--surface); padding:.9rem 1rem; }
+.result-extra-lbl { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; }
+.result-extra-val { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:500; color:#eef0f5; margin-top:3px; }
+.result-err { font-family:'JetBrains Mono',monospace; font-size:13px; color:#f87171; margin-top:1rem; }
+
+/* ── ABOUT ── */
+.about-section { position:relative; z-index:1; max-width:1100px; margin:0 auto; padding:0 3rem 6rem; }
+.about-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:1px; background:var(--border); border:1px solid var(--border); }
+.about-card { background:var(--surface); padding:1.8rem 2rem; position:relative; overflow:hidden; transition:background .2s; }
+.about-card:hover { background:#161820; }
+.about-card::before { content:''; position:absolute; top:0; left:0; width:2px; height:0; background:var(--accent); transition:height .3s ease; }
+.about-card:hover::before { height:100%; }
+.about-card-num { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--accent); margin-bottom:.5rem; }
+.about-card-title { font-family:'DM Serif Display',serif; font-size:1.2rem; color:#eef0f5; margin-bottom:.5rem; }
+.about-card-body { font-size:13px; color:var(--muted); line-height:1.65; }
+
+/* ── FOOTER ── */
+footer { position:relative; z-index:1; border-top:1px solid var(--border); padding:2rem 3rem; display:flex; justify-content:space-between; align-items:center; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--muted); }
+footer a { color:var(--accent); text-decoration:none; }
+footer a:hover { text-decoration:underline; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+.reveal { opacity:0; transform:translateY(20px); transition:opacity .5s ease,transform .5s ease; }
+.reveal.visible { opacity:1; transform:translateY(0); }
+
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--muted); }
+
+@media(max-width:900px){
+  nav { padding:0 1.25rem; }
+  .hero,.calc-section,.about-section { padding-left:1.25rem; padding-right:1.25rem; }
+  .nav-links { display:none; }
+  .input-grid { grid-template-columns:1fr; }
+  .result-extras { grid-template-columns:1fr 1fr; }
+  .about-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Statistics.java</div>
+  <ul class="nav-links">
+    <li><a href="#calculator">Calculator</a></li>
+    <li><a href="#about">About</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="hero-tag">Java · Interactive Statistics Tool</div>
+  <h1>Descriptive<br/><em>Statistics</em> Calculator</h1>
+  <p class="hero-sub">Select a function, enter your numbers, and get your result instantly — with formulas and full explanations included.</p>
+  <div class="hero-badges">
+    <span class="badge green">✓ Live results</span>
+    <span class="badge blue">15 functions</span>
+    <span class="badge yellow">No sign-up needed</span>
+    <span class="badge">Zero dependencies</span>
+  </div>
+</header>
+
+<section class="calc-section" id="calculator">
+  <div class="section-label reveal">01 — Calculator</div>
+  <div class="cat-row" id="cat-row">
+    <button class="cat-pill active" onclick="filterCat('all',this)">All functions</button>
+    <button class="cat-pill" onclick="filterCat('central',this)">Central tendency</button>
+    <button class="cat-pill" onclick="filterCat('spread',this)">Spread &amp; dispersion</button>
+    <button class="cat-pill" onclick="filterCat('position',this)">Position &amp; shape</button>
+  </div>
+  <div class="fn-grid" id="fn-grid"></div>
+  <div class="calc-panel" id="calc-panel">
+    <div class="panel-placeholder">Select a function above<br/><span>Results appear instantly as you type</span></div>
+  </div>
+</section>
+
+<section class="about-section" id="about">
+  <div class="section-label reveal">02 — About the functions</div>
+  <div class="about-grid reveal">
+    <div class="about-card">
+      <div class="about-card-num">01</div>
+      <div class="about-card-title">Central Tendency</div>
+      <div class="about-card-body">Mean, median, and mode describe where the centre of your data lies. The mean is sensitive to outliers; the median is not. Use mode for discrete or categorical data.</div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-num">02</div>
+      <div class="about-card-title">Spread &amp; Dispersion</div>
+      <div class="about-card-body">Standard deviation, variance, IQR, and range describe how spread out your data is. Use sample variants with Bessel's correction when working with a sample, not a full population.</div>
+    </div>
+    <div class="about-card">
+      <div class="about-card-num">03</div>
+      <div class="about-card-title">Position &amp; Shape</div>
+      <div class="about-card-body">Z-scores, percentiles, and skewness tell you where individual values sit and how symmetrical the distribution is. Skewness near 0 means symmetric; positive means a right tail.</div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>Statistics.java — built for students &amp; developers.</span>
+  <span><a href="#calculator">Back to top ↑</a></span>
+</footer>
+
+<script>
+const fns=[
+  {id:'mean',cat:'central',label:'Mean',short:'Arithmetic average',desc:'The arithmetic mean is the sum of all values divided by the count. It is the most common measure of central tendency, but it is sensitive to extreme outliers that can pull it away from the typical value.',formula:'μ = Σxᵢ / n',inputs:[{id:'data',label:'Values',hint:'e.g.  4, 8, 6, 5, 3, 2',type:'data'}],compute:(d)=>({main:mean(d),label:'Mean (μ)',sub:`Sum = ${fmt(d.reduce((a,b)=>a+b,0))}  ·  n = ${d.length}`})},
+  {id:'median',cat:'central',label:'Median',short:'Middle value',desc:'The median is the middle value when data is sorted. For an even number of values the two centre values are averaged. Unlike the mean, the median is robust to outliers — a single extreme value cannot shift it far.',formula:'middle of sorted data (average of two if n is even)',inputs:[{id:'data',label:'Values',hint:'e.g.  4, 8, 6, 5, 3',type:'data'}],compute:(d)=>({main:median(d),label:'Median',sub:`n = ${d.length} values`})},
+  {id:'mode',cat:'central',label:'Mode',short:'Most frequent value',desc:'The mode is the most frequently occurring value. Returns "No unique mode" when all values appear equally often. Particularly useful for categorical or discrete datasets where averaging makes no sense.',formula:'value with the highest frequency in the dataset',inputs:[{id:'data',label:'Values',hint:'e.g.  2, 4, 4, 6, 8',type:'data'}],compute:(d)=>{const m=mode(d);return{main:isNaN(m)?'No unique mode':fmt(m),label:'Mode',sub:isNaN(m)?'All values equally frequent':'Most common value',noFmt:true}}},
+  {id:'sd',cat:'spread',label:'Std deviation',short:'Population spread (σ)',desc:'Population standard deviation measures the average distance of each value from the mean. Use this only when your dataset represents the entire population, not a sample drawn from it.',formula:'σ = √( Σ(xᵢ − μ)² / N )',inputs:[{id:'data',label:'Values',hint:'e.g.  10, 12, 14, 11, 13',type:'data'}],compute:(d)=>({main:popSD(d),label:'Population std deviation (σ)',sub:`Variance σ² = ${fmt(popSD(d)**2)}`})},
+  {id:'ssd',cat:'spread',label:'Sample std dev',short:"Sample spread (Bessel's correction)",desc:"Sample standard deviation applies Bessel's correction — dividing by N−1 rather than N. This corrects the bias that arises when estimating the population SD from a sample. Use this in most real-world situations.",formula:'s = √( Σ(xᵢ − x̄)² / (N−1) )',inputs:[{id:'data',label:'Values',hint:'Minimum 2 values required',type:'data'}],compute:(d)=>({main:sampSD(d),label:'Sample std deviation (s)',sub:`Sample variance s² = ${fmt(sampSD(d)**2)}`})},
+  {id:'var',cat:'spread',label:'Variance',short:'Population variance (σ²)',desc:'Population variance is the average of the squared differences from the mean — equivalently, the square of the population standard deviation. It is measured in squared units, so standard deviation is often easier to interpret.',formula:'σ² = Σ(xᵢ − μ)² / N',inputs:[{id:'data',label:'Values',hint:'e.g.  5, 7, 3, 8, 6',type:'data'}],compute:(d)=>({main:popSD(d)**2,label:'Population variance (σ²)',sub:`Std deviation σ = ${fmt(popSD(d))}`})},
+  {id:'svar',cat:'spread',label:'Sample variance',short:"Sample variance (Bessel's correction)",desc:"Sample variance applies Bessel's correction (divides by N−1) and is the square of the sample standard deviation. Use when your data is a sample — it provides an unbiased estimate of the population variance.",formula:'s² = Σ(xᵢ − x̄)² / (N−1)',inputs:[{id:'data',label:'Values',hint:'Minimum 2 values required',type:'data'}],compute:(d)=>({main:sampSD(d)**2,label:'Sample variance (s²)',sub:`Sample std deviation s = ${fmt(sampSD(d))}`})},
+  {id:'se',cat:'spread',label:'Standard error',short:'Uncertainty of the mean',desc:'The standard error of the mean estimates how much your sample mean is likely to differ from the true population mean. As sample size grows, the standard error shrinks — larger samples give more precise estimates.',formula:'SE = s / √n',inputs:[{id:'data',label:'Values',hint:'Minimum 2 values required',type:'data'}],compute:(d)=>{const se=sampSD(d)/Math.sqrt(d.length),m=mean(d);return{main:se,label:'Standard error',sub:`95% CI ≈ ${fmt(m-1.96*se)}  to  ${fmt(m+1.96*se)}`,extras:[{l:'Mean',v:fmt(m)},{l:'Sample SD',v:fmt(sampSD(d))},{l:'SE',v:fmt(se)}]}}},
+  {id:'range',cat:'spread',label:'Range',short:'Max minus min',desc:'The range is the simplest measure of spread — the distance from the smallest to the largest value. It is very easy to calculate but extremely sensitive to outliers; a single extreme value can make the range misleading.',formula:'range = max(x) − min(x)',inputs:[{id:'data',label:'Values',hint:'e.g.  3, 7, 2, 9, 5',type:'data'}],compute:(d)=>{const mn=Math.min(...d),mx=Math.max(...d);return{main:mx-mn,label:'Range',sub:`Min = ${fmt(mn)}  ·  Max = ${fmt(mx)}`,extras:[{l:'Minimum',v:fmt(mn)},{l:'Maximum',v:fmt(mx)},{l:'Range',v:fmt(mx-mn)}]}}},
+  {id:'iqr',cat:'spread',label:'IQR',short:'Middle 50% spread',desc:"The interquartile range (IQR) is Q3 minus Q1 and covers the central 50% of your data. It is far more robust to outliers than the full range — extreme values don't influence it at all. Widely used in box plots.",formula:"IQR = Q3 − Q1  (Tukey's hinges)",inputs:[{id:'data',label:'Values',hint:'e.g.  3, 7, 8, 5, 12, 14, 21',type:'data'}],compute:(d)=>{const q1=pct(25,d),q2=median(d),q3=pct(75,d);return{main:q3-q1,label:'IQR (Q3 − Q1)',sub:`Q1 = ${fmt(q1)}  ·  Q2 = ${fmt(q2)}  ·  Q3 = ${fmt(q3)}`,extras:[{l:'Q1 (25th)',v:fmt(q1)},{l:'Q2 Median',v:fmt(q2)},{l:'Q3 (75th)',v:fmt(q3)}]}}},
+  {id:'cv',cat:'spread',label:'Coeff of variation',short:'Relative variability %',desc:'The coefficient of variation (CV) expresses the sample standard deviation as a percentage of the mean. This lets you compare variability between datasets with different units or scales — a CV of 5% is low regardless of units.',formula:'CV = (s / x̄) × 100 %',inputs:[{id:'data',label:'Values',hint:'e.g.  12.4, 11.8, 13.1, 12.7',type:'data'}],compute:(d)=>({main:(sampSD(d)/mean(d)*100).toFixed(2)+'%',label:'Coefficient of variation',sub:`Mean = ${fmt(mean(d))}  ·  s = ${fmt(sampSD(d))}`,noFmt:true})},
+  {id:'zscore',cat:'position',label:'Z-score',short:'Standardised distance from mean',desc:'A z-score tells you how many standard deviations a single value lies from the mean. A z-score of 0 means exactly average; +2 means 2 SDs above; −1.5 means 1.5 SDs below. Useful for comparing values across different scales.',formula:'z = (x − μ) / σ',inputs:[{id:'x',label:'Your value (x)',hint:'The data point to standardise',type:'num'},{id:'mu',label:'Mean (μ)',hint:'Mean of the dataset',type:'num'},{id:'sd',label:'Std deviation (σ)',hint:'SD of the dataset',type:'num'}],compute:(_,v)=>{const z=(v.x-v.mu)/v.sd;const interp=Math.abs(z)<0.1?'Exactly at the mean':z>0?`${fmt(Math.abs(z))} SDs above the mean`:`${fmt(Math.abs(z))} SDs below the mean`;return{main:z,label:'Z-score',sub:interp}}},
+  {id:'pct',cat:'position',label:'Percentile',short:'Value at p-th rank',desc:'Returns the value below which p% of your data falls, using linear interpolation. The 25th percentile is Q1, the 50th is the median, the 75th is Q3. The 90th percentile means 90% of observations fall below that value.',formula:'linear interpolation on sorted data  ·  p ∈ [0, 100]',inputs:[{id:'p',label:'Percentile (0 – 100)',hint:'e.g.  25, 50, 75, 90',type:'num'},{id:'data',label:'Values',hint:'e.g.  55, 72, 68, 91, 83',type:'data'}],compute:(d,v)=>{if(v.p<0||v.p>100)return{err:'p must be between 0 and 100'};return{main:pct(v.p,d),label:`${v.p}th percentile`,sub:`${v.p}% of values fall below ${fmt(pct(v.p,d))}`}}},
+  {id:'skew',cat:'position',label:'Skewness',short:'Tail asymmetry of the distribution',desc:"Fisher's sample skewness measures how asymmetric a distribution is. A value near 0 means roughly symmetric. Positive values indicate a longer right tail (high outliers). Negative values indicate a longer left tail (low outliers).",formula:'g₁ = [n / ((n−1)(n−2))] · Σ((xᵢ − x̄) / s)³',inputs:[{id:'data',label:'Values',hint:'e.g.  1, 2, 2, 3, 3, 3, 4, 10',type:'data'}],compute:(d)=>{const g=skew(d);const interp=Math.abs(g)<0.5?'Approximately symmetric':g>0?'Right-skewed — longer positive tail':'Left-skewed — longer negative tail';return{main:g,label:'Skewness (g₁)',sub:interp}}},
+  {id:'minmax',cat:'position',label:'Min & Max',short:'Smallest and largest values',desc:'Returns both the minimum and maximum values from your dataset. A quick way to see the full span of your data and understand the boundaries before diving into more detailed analysis.',formula:'single linear scan — O(n)',inputs:[{id:'data',label:'Values',hint:'e.g.  4, 8, 6, 5, 3, 2, 9',type:'data'}],compute:(d)=>{const mn=Math.min(...d),mx=Math.max(...d);return{main:`${fmt(mn)}  /  ${fmt(mx)}`,label:'Min  /  Max',noFmt:true,extras:[{l:'Minimum',v:fmt(mn)},{l:'Maximum',v:fmt(mx)},{l:'Range',v:fmt(mx-mn)}]}}},
+];
+
+const mean   = d=>d.reduce((a,b)=>a+b,0)/d.length;
+const popSD  = d=>{const m=mean(d);return Math.sqrt(d.reduce((s,x)=>s+(x-m)**2,0)/d.length)};
+const sampSD = d=>{const m=mean(d);return Math.sqrt(d.reduce((s,x)=>s+(x-m)**2,0)/(d.length-1))};
+const median = d=>{const s=[...d].sort((a,b)=>a-b),n=s.length;return n%2?s[Math.floor(n/2)]:(s[n/2-1]+s[n/2])/2};
+const mode   = d=>{const f={};d.forEach(x=>f[x]=(f[x]||0)+1);let mx=0,mv=NaN,tie=false;for(const[k,v]of Object.entries(f)){if(v>mx){mx=v;mv=+k;tie=false}else if(v===mx)tie=true}return tie?NaN:mv};
+const pct    = (p,d)=>{const s=[...d].sort((a,b)=>a-b),idx=p/100*(s.length-1),lo=Math.floor(idx),hi=Math.ceil(idx);return lo===hi?s[lo]:s[lo]+(idx-lo)*(s[hi]-s[lo])};
+const skew   = d=>{const n=d.length,m=mean(d),s=sampSD(d);return(n/((n-1)*(n-2)))*d.reduce((a,x)=>a+((x-m)/s)**3,0)};
+const parseData = str=>str.split(/[,\s]+/).map(s=>parseFloat(s.trim())).filter(x=>!isNaN(x));
+const fmt = n=>{if(typeof n!=='number'||isNaN(n))return String(n);if(n===0)return'0';const a=Math.abs(n);if(a>=1000)return n.toLocaleString(undefined,{maximumFractionDigits:2});if(a>=1)return(+n.toFixed(4))+'';return(+n.toFixed(6))+''};
+
+// ── PASTE ICON SVG ──
+const pasteIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="5" y="6" width="14" height="16" rx="2"/><path d="M9 2H7a2 2 0 0 0-2 2v1"/><path d="M15 2h2a2 2 0 0 1 2 2v1"/></svg>`;
+
+// ── SANITIZE: only allow digits, dot, minus, comma, space ──
+function sanitizeData(str) {
+  // Allow: 0-9, period, minus, comma, space only
+  return str.replace(/[^0-9.\-,\s]/g, '');
+}
+
+// ── HANDLE DATA INPUT: sanitize on every keystroke ──
+function onDataInput(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  const cursor = el.selectionStart;
+  const cleaned = sanitizeData(el.value);
+  if (cleaned !== el.value) {
+    el.value = cleaned;
+    // restore cursor position after sanitize
+    el.setSelectionRange(cursor - 1, cursor - 1);
+  }
+  updateParsedCount(inputId);
+  compute();
+}
+
+// ── HANDLE NUMBER INPUT: only allow numeric chars on keydown ──
+function onNumKeydown(e) {
+  const allowed = ['Backspace','Delete','ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Tab','Enter','Home','End'];
+  if (allowed.includes(e.key)) return;
+  // allow Ctrl/Cmd shortcuts (copy, paste, select all)
+  if (e.ctrlKey || e.metaKey) return;
+  // allow digits, single dot, single minus at start
+  if (!/^[0-9.\-]$/.test(e.key)) {
+    e.preventDefault();
+    return;
+  }
+  const el = e.target;
+  // only one dot allowed
+  if (e.key === '.' && el.value.includes('.')) { e.preventDefault(); return; }
+  // minus only at start position 0
+  if (e.key === '-' && el.selectionStart !== 0) { e.preventDefault(); return; }
+  // minus only once
+  if (e.key === '-' && el.value.includes('-')) { e.preventDefault(); return; }
+}
+
+// ── UPDATE PARSED COUNT BADGE ──
+function updateParsedCount(inputId) {
+  const el  = document.getElementById(inputId);
+  const cnt = document.getElementById('cnt-'+inputId);
+  if (!el || !cnt) return;
+  const d = parseData(el.value);
+  if (!el.value.trim()) {
+    cnt.textContent = '';
+    cnt.className = 'parsed-count dim';
+  } else if (d.length === 0) {
+    cnt.textContent = 'No valid numbers found';
+    cnt.className = 'parsed-count warn';
+    el.classList.add('invalid');
+  } else {
+    cnt.textContent = `✓ ${d.length} value${d.length===1?'':'s'} parsed`;
+    cnt.className = 'parsed-count ok';
+    el.classList.remove('invalid');
+  }
+}
+
+// ── PASTE FROM CLIPBOARD ──
+async function pasteFromClipboard(inputId) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  try {
+    const text = await navigator.clipboard.readText();
+    el.value = sanitizeData(text);
+    updateParsedCount(inputId);
+    compute();
+  } catch (err) {
+    // If clipboard permission is denied, just focus the input
+    el.focus();
+    // Show a brief tooltip hint
+    const btn = document.getElementById('paste-btn-'+inputId);
+    if (btn) {
+      const orig = btn.innerHTML;
+      btn.innerHTML = pasteIcon + ' Denied — paste manually';
+      btn.style.color = '#f87171';
+      setTimeout(()=>{ btn.innerHTML = orig; btn.style.color = ''; }, 2500);
+    }
+  }
+}
+
+let activeFn=null, curCat='all';
+
+function filterCat(cat,btn){
+  curCat=cat;
+  document.querySelectorAll('.cat-pill').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGrid();
+}
+
+function renderGrid(){
+  const grid=document.getElementById('fn-grid');
+  const catName={central:'Central tendency',spread:'Spread',position:'Position & shape'};
+  const visible=fns.filter(f=>curCat==='all'||f.cat===curCat);
+  grid.innerHTML=visible.map(f=>`
+    <div class="fn-card${activeFn&&activeFn.id===f.id?' active':''}" onclick="selectFn('${f.id}')">
+      <div class="fn-cat-tag">${catName[f.cat]}</div>
+      <div class="fn-name">${f.label}</div>
+      <div class="fn-short">${f.short}</div>
+    </div>`).join('');
+}
+
+function selectFn(id){
+  activeFn=fns.find(f=>f.id===id);
+  renderGrid();
+  const needsGrid=activeFn.inputs.length>1;
+  document.getElementById('calc-panel').innerHTML=`
+    <div class="panel-title">${activeFn.label}</div>
+    <div class="panel-desc">${activeFn.desc}</div>
+    <div class="panel-formula">${activeFn.formula}</div>
+    <div class="input-grid${needsGrid?'':' single'}">
+      ${activeFn.inputs.map(inp=>{
+        if(inp.type==='data'){
+          return `
+            <div class="input-group">
+              <div class="input-label">${inp.label}</div>
+              <div class="inp-row">
+                <input
+                  class="inp"
+                  type="text"
+                  id="inp-${inp.id}"
+                  placeholder="${inp.hint}"
+                  oninput="onDataInput('inp-${inp.id}')"
+                  autocomplete="off" autocorrect="off" spellcheck="false"
+                />
+                <button
+                  class="paste-btn"
+                  id="paste-btn-inp-${inp.id}"
+                  onclick="pasteFromClipboard('inp-${inp.id}')"
+                  title="Paste numbers from clipboard"
+                >${pasteIcon} Paste</button>
+              </div>
+              <div class="parsed-count dim" id="cnt-inp-${inp.id}"></div>
+              <div class="inp-hint">${inp.hint} — only numbers, decimals &amp; negatives allowed</div>
+            </div>`;
+        } else {
+          return `
+            <div class="input-group">
+              <div class="input-label">${inp.label}</div>
+              <input
+                class="inp"
+                type="text"
+                inputmode="decimal"
+                id="inp-${inp.id}"
+                placeholder="0"
+                onkeydown="onNumKeydown(event)"
+                oninput="compute()"
+                autocomplete="off" spellcheck="false"
+              />
+              <div class="inp-hint">${inp.hint}</div>
+            </div>`;
+        }
+      }).join('')}
+    </div>
+    <div class="result-area" id="result-area"></div>`;
+}
+
+function compute(){
+  const f=activeFn;
+  const area=document.getElementById('result-area');
+  if(!f||!area)return;
+  const vals={};let missing=false;
+  for(const inp of f.inputs){
+    const el=document.getElementById('inp-'+inp.id);
+    if(!el){missing=true;break;}
+    if(inp.type==='data'){
+      const d=parseData(el.value);
+      if(d.length<((['ssd','svar','se'].includes(f.id))?2:1)){missing=true;break;}
+      vals[inp.id]=d;
+    }else{
+      const v=parseFloat(el.value);
+      if(isNaN(v)){missing=true;break;}
+      vals[inp.id]=v;
+    }
+  }
+  if(missing){area.innerHTML='';return;}
+  let res;
+  try{res=f.compute(vals['data']||[],vals);}catch(e){area.innerHTML=`<div class="result-err">Error: ${e.message}</div>`;return;}
+  if(res.err){area.innerHTML=`<div class="result-err">${res.err}</div>`;return;}
+  const dv=res.noFmt?res.main:fmt(+res.main);
+  area.innerHTML=`
+    <div class="result-box">
+      <div class="result-lbl">${res.label}</div>
+      <div class="result-val">${dv}</div>
+      ${res.sub?`<div class="result-sub">${res.sub}</div>`:''}
+    </div>
+    ${res.extras?`<div class="result-extras">${res.extras.map(e=>`<div class="result-extra"><div class="result-extra-lbl">${e.l}</div><div class="result-extra-val">${e.v}</div></div>`).join('')}</div>`:''}`;
+}
+
+const obs=new IntersectionObserver(entries=>entries.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')}),{threshold:.08});
+document.querySelectorAll('.reveal').forEach(el=>obs.observe(el));
+renderGrid();
+</script>
+</body>
+</html>
